@@ -15,47 +15,11 @@ use soroban_sdk::{contracterror, contracttype, Address, Env, Vec};
 /// simpler than a dynamic entity population.
 pub const GAME_ENTITY: u32 = 1;
 
-/// Number of cells on the board.
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TurnBasedConfig {
-    pub board_width: u32,
-    pub board_height: u32,
-    pub win_length: u32,
-    pub first_player: soroban_sdk::Symbol,
-}
-
-impl TurnBasedConfig {
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.board_width < 3 || self.board_width > 8 {
-            return Err(ConfigError::InvalidWidth);
-        }
-        if self.board_height < 3 || self.board_height > 8 {
-            return Err(ConfigError::InvalidHeight);
-        }
-        if self.win_length < 3 || self.win_length > core::cmp::min(self.board_width, self.board_height) {
-            return Err(ConfigError::InvalidWinLength);
-        }
-        if self.first_player != soroban_sdk::symbol_short!("x") && self.first_player != soroban_sdk::symbol_short!("o") {
-            return Err(ConfigError::InvalidFirstPlayer);
-        }
-        Ok(())
-    }
-}
-
-impl_rich_component!(TurnBasedConfig, "config");
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum ConfigError {
-    InvalidWidth = 1,
-    InvalidHeight = 2,
-    InvalidWinLength = 3,
-    InvalidFirstPlayer = 4,
-}
+/// Match rules selected at export time; `cougr new` uses the 3x3 default.
+pub const BOARD_WIDTH: u32 = {{board_width}};
+pub const BOARD_HEIGHT: u32 = {{board_height}};
+pub const WIN_LENGTH: u32 = {{win_length}};
+pub const CELL_COUNT: u32 = BOARD_WIDTH * BOARD_HEIGHT;
 
 // ─── Cell markers ─────────────────────────────────────────────────────────────
 

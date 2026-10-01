@@ -7,7 +7,8 @@
 use soroban_sdk::Vec;
 
 use crate::components::{
-    Board, TurnBasedConfig, TurnState, DRAW, EMPTY, IN_PROGRESS, MARK_O, MARK_X, O_WINS, X_WINS,
+    Board, TurnState, BOARD_HEIGHT, BOARD_WIDTH, CELL_COUNT, DRAW, EMPTY, IN_PROGRESS,
+    MARK_O, MARK_X, O_WINS, WIN_LENGTH, X_WINS,
 };
 
 /// Why a proposed move is not legal.
@@ -79,68 +80,24 @@ pub fn advance(turn: &TurnState, cells: &Vec<u32>, config: &TurnBasedConfig) -> 
 /// Win/draw detection over the current cells.
 ///
 /// Returns `IN_PROGRESS`, `X_WINS`, `O_WINS`, or `DRAW`.
-pub fn detect_status(cells: &Vec<u32>, move_count: u32, config: &TurnBasedConfig) -> u32 {
-    let w = config.board_width;
-    let h = config.board_height;
-    let win_len = config.win_length;
-
-    let check_line = |start_x: u32, start_y: u32, dx: i32, dy: i32| -> u32 {
-        let mut x = start_x as i32;
-        let mut y = start_y as i32;
-        let mut count = 0;
-        let mut current_mark = EMPTY;
-
-        for _ in 0..win_len {
-            if x < 0 || y < 0 || x >= w as i32 || y >= h as i32 {
-                break;
+pub fn detect_status(cells: &Vec<u32>, move_count: u32) -> u32 {
+    for row in 0..BOARD_HEIGHT {
+        for col in 0..BOARD_WIDTH {
+            let mark = cells.get(row * BOARD_WIDTH + col).unwrap_or(EMPTY);
+            if mark == EMPTY { continue; }
+            for (dr, dc) in [(0i32, 1i32), (1, 0), (1, 1), (1, -1)] {
+                let mut won = true;
+                for step in 1..WIN_LENGTH {
+                    let r = row as i32 + dr * step as i32;
+                    let c = col as i32 + dc * step as i32;
+                    if r < 0 || c < 0 || r >= BOARD_HEIGHT as i32 || c >= BOARD_WIDTH as i32
+                        || cells.get(r as u32 * BOARD_WIDTH + c as u32).unwrap_or(EMPTY) != mark {
+                        won = false;
+                        break;
+                    }
+                }
+                if won { return if mark == MARK_X { X_WINS } else { O_WINS }; }
             }
-            let idx = (y * w as i32 + x) as u32;
-            let mark = cells.get(idx).unwrap_or(EMPTY);
-            
-            if mark == EMPTY {
-                break;
-            }
-            if current_mark == EMPTY {
-                current_mark = mark;
-                count = 1;
-            } else if current_mark == mark {
-                count += 1;
-            } else {
-                break;
-            }
-            
-            x += dx;
-            y += dy;
-        }
-
-        if count == win_len {
-            if current_mark == MARK_X { X_WINS } else { O_WINS }
-        } else {
-            EMPTY
-        }
-    };
-
-    // Horizontal
-    for y in 0..h {
-        for x in 0..=w.saturating_sub(win_len) {
-            let res = check_line(x, y, 1, 0);
-            if res != EMPTY { return res; }
-        }
-    }
-
-    // Vertical
-    for x in 0..w {
-        for y in 0..=h.saturating_sub(win_len) {
-            let res = check_line(x, y, 0, 1);
-            if res != EMPTY { return res; }
-        }
-    }
-
-    // Diagonal (top-left to bottom-right)
-    for y in 0..=h.saturating_sub(win_len) {
-        for x in 0..=w.saturating_sub(win_len) {
-            let res = check_line(x, y, 1, 1);
-            if res != EMPTY { return res; }
         }
     }
 
